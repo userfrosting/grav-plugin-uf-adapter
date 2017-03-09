@@ -71,7 +71,7 @@ Next, you will need to set a `site.uri.main` variable in your **UserFrosting** c
 Finally, you will need to add the following dependencies to Grav's `composer.json` file:
 
 ```
-    "require-dev": {
+    "require": {
         "userfrosting/assets": "^4.0.1",
         "userfrosting/config": "^4.0.0",
         "vlucas/phpdotenv": "^2"
