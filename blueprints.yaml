@@ -1,0 +1,31 @@
+name: Uf Adapter
+version: 0.1.0
+description: Adapter to allow you to use your UF templates, assets, and config variables in Grav.
+icon: plug
+author:
+  name: Alexander Weissman
+  email: alex@userfrosting.com
+homepage: https://github.com/userfrosting/grav-plugin-uf-adapter
+demo: http://demo.yoursite.com
+keywords: grav, plugin, etc
+bugs: https://github.com/userfrosting/grav-plugin-uf-adapter/issues
+docs: https://github.com/userfrosting/grav-plugin-uf-adapter/blob/develop/README.md
+license: MIT
+
+form:
+  validation: strict
+  fields:
+    enabled:
+      type: toggle
+      label: Plugin status
+      highlight: 1
+      default: 0
+      options:
+        1: Enabled
+        0: Disabled
+      validate:
+        type: bool
+    text_var:
+      type: text
+      label: Text Variable
+      help: Text to add to the top of a page
