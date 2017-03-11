@@ -24,15 +24,9 @@ When this plugin is installed to your Grav blog, it will add the following servi
 
 The plugin will then use these services to do the following:
 
-- Load UserFrosting templates from any Sprinkles declared in your `sprinkles.json`, into Grav's Twig view.  These will be loaded _before_ any and all Grav templates.  Namespaced template paths for each Sprinkle will also be added.
+- Load UserFrosting templates from any Sprinkles declared in your `sprinkles.json`, into Grav's Twig view.  By default, these will be loaded _before_ any and all Grav templates.  Namespaced template paths for each Sprinkle will also be added (`userfrosting`, `userfrosting.core`, `userfrosting.account`, etc).
 - Add the UserFrosting asset loader to Twig.  Since Grav already has an `assets` Twig variable, UserFrosting's asset loader will be aliased as `ufAssets` in Twig.
-- Merge the following UF variables into Grav's `site` variable:
-
-- `site.uri.public`
-- `site.title`
-- `site.author`
-- `site.analytics`
-- `site.debug`
+- Merge UserFrosting's `site` config variable into Grav's `site` variable.  Grav's site variables will be overwritten by any with the same name in UserFrosting's config.
 
 ## Installation
 
@@ -125,6 +119,5 @@ As you can see, we've extended UserFrosting's core `layouts/basic.html.twig`, bu
 
 ## To Do
 
-- [ ] Import all `site` config values from UF into Twig?
 - [ ] Figure out how to remove requirement for `site.uri.main` config variable
 - [ ] Maybe alias Grav's asset manager, instead of our own?
