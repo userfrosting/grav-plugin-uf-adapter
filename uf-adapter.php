@@ -95,7 +95,7 @@ class UFAdapterPlugin extends Plugin
                     $loader->addPath($path);
                     $loader->addPath($path, 'userfrosting');
                 }
-                $loader->addPath($path, "userfrosting.$sprinkle");
+                $loader->addPath($path, $sprinkle);
             }
         }
     }
@@ -183,13 +183,13 @@ class UFAdapterPlugin extends Plugin
 
             // Construct base url from components, if not explicitly specified
             if (!isset($config['site.uri.public'])) {
-                $base_uri = $config['site.uri.base'];
+                $baseUri = $config['site.uri.base'];
 
                 $public = Uri::buildUrl(
-                    $base_uri['scheme'],
-                    $base_uri['host'],
-                    $base_uri['port'],
-                    $base_uri['path']
+                    $baseUri['scheme'],
+                    $baseUri['host'],
+                    $baseUri['port'],
+                    $baseUri['path']
                 );
 
                 // Slim\Http\Uri likes to add trailing slashes when the path is empty, so this fixes that.

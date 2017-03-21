@@ -1,3 +1,6 @@
+# v0.1.2
+- Twig namespaces consistent with UF
+
 # v0.1.1
 
 - Allow loading UF Twig templates first or last
