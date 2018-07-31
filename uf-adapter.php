@@ -3,7 +3,6 @@
  * UserFrosting (http://www.userfrosting.com)
  *
  * @link      https://github.com/userfrosting/adapter-grav
- * @copyright Copyright (c) 2013-2017 Alexander Weissman
  * @license   https://github.com/userfrosting/UserFrosting/blob/master/licenses/UserFrosting.md (MIT License)
  */
 namespace Grav\Plugin;
@@ -16,8 +15,6 @@ use UserFrosting\Assets\Assets;
 use UserFrosting\Assets\PathTransformer\PrefixTransformer;
 use UserFrosting\Assets\AssetBundles\GulpBundleAssetsCompiledBundles as CompiledAssetBundles;
 use UserFrosting\Config\ConfigPathBuilder;
-use UserFrosting\Sprinkle\Core\Util\RawAssetBundles;
-use UserFrosting\Sprinkle\Core\Util\AssetLoader;
 use UserFrosting\Support\Repository\Loader\ArrayFileLoader;
 use UserFrosting\Support\Repository\Repository;
 
@@ -69,6 +66,8 @@ class UFAdapterPlugin extends Plugin
     public function onTwigExtensions()
     {
         require_once(__DIR__ . '/classes/UFExtension.php');
+        require_once(__DIR__ . '/classes/AssetLoader.php');
+        require_once(__DIR__ . '/classes/RawAssetBundles.php');
         $ufExtension = new UFExtension($this->grav);
         $this->grav['twig']->twig->addExtension($ufExtension);
     }
@@ -86,7 +85,11 @@ class UFAdapterPlugin extends Plugin
 
         // Add other Sprinkles' templates namespaces
         foreach ($sprinkles as $sprinkle) {
-            if ($path = $locator->findResource('sprinkles://'.$sprinkle.'/templates/', true, false)) {
+            $path = \UserFrosting\SPRINKLES_DIR . \UserFrosting\DS .
+                $sprinkle . \UserFrosting\DS .
+                \UserFrosting\TEMPLATE_DIR_NAME . \UserFrosting\DS;
+
+            if (is_dir($path)) {
                 if ($loadUFTemplatesLast) {
                     $loader->prependPath($path);
                     $loader->prependPath($path, 'userfrosting');
@@ -106,7 +109,7 @@ class UFAdapterPlugin extends Plugin
 
         // TODO: assign the uf config variables to the Grav plugin's config?
         $ufConfig = $this->grav['ufConfig'];
-        
+
         // Update Grav's global Twig variables with values from UF
         $gravTwig->twig_vars['site'] = array_replace_recursive($gravTwig->twig_vars['site'], $ufConfig['site'],
         [
@@ -168,7 +171,7 @@ class UFAdapterPlugin extends Plugin
                 $assets->addAssetBundles(new CompiledAssetBundles($locator("build://" . $config['assets.compiled.schema'], true, true)));
             }
 
-            return $am;
+            return $assets;
         };
 
         $this->grav['ufConfig'] = function ($c) {
@@ -222,12 +225,14 @@ class UFAdapterPlugin extends Plugin
             // Build a locator for finding UF resources
             $locator = new UniformResourceLocator(\UserFrosting\ROOT_DIR);
             $locator->addPath('build', '', \UserFrosting\BUILD_DIR_NAME);
-            $locator->addPath('sprinkles', '', \UserFrosting\APP_DIR_NAME . '/' . \UserFrosting\SPRINKLES_DIR_NAME);
 
             foreach ($this->sprinkles as $sprinkle) {
                 $sprinklePath = \UserFrosting\APP_DIR_NAME . '/' . \UserFrosting\SPRINKLES_DIR_NAME . \UserFrosting\DS . $sprinkle;
+                $locator->addPath('assets', 'vendor', \UserFrosting\APP_DIR_NAME . '/' . \UserFrosting\ASSET_DIR_NAME . '/' . 'bower_components');
+                $locator->addPath('assets', 'vendor', \UserFrosting\APP_DIR_NAME . '/' . \UserFrosting\ASSET_DIR_NAME . '/' . 'node_modules');
                 $locator->addPath('assets', '', $sprinklePath . \UserFrosting\DS . \UserFrosting\ASSET_DIR_NAME);
                 $locator->addPath('config', '', $sprinklePath . \UserFrosting\DS . \UserFrosting\CONFIG_DIR_NAME);
+                $locator->addPath('sprinkles', '', $sprinklePath);
                 $locator->addPath('templates', '', $sprinklePath . \UserFrosting\DS . \UserFrosting\TEMPLATE_DIR_NAME);
             }
 
