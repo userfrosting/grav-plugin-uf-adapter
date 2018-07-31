@@ -12,12 +12,14 @@ use Dotenv\Dotenv;
 use Grav\Common\Plugin;
 use Grav\Common\Uri;
 use RocketTheme\Toolbox\ResourceLocator\UniformResourceLocator;
-use UserFrosting\Assets\AssetBundleSchema;
-use UserFrosting\Assets\AssetLoader;
-use UserFrosting\Assets\AssetManager;
-use UserFrosting\Assets\UrlBuilder\AssetUrlBuilder;
-use UserFrosting\Assets\UrlBuilder\CompiledAssetUrlBuilder;
-use UserFrosting\Config\Config;
+use UserFrosting\Assets\Assets;
+use UserFrosting\Assets\PathTransformer\PrefixTransformer;
+use UserFrosting\Assets\AssetBundles\GulpBundleAssetsCompiledBundles as CompiledAssetBundles;
+use UserFrosting\Config\ConfigPathBuilder;
+use UserFrosting\Sprinkle\Core\Util\RawAssetBundles;
+use UserFrosting\Sprinkle\Core\Util\AssetLoader;
+use UserFrosting\Support\Repository\Loader\ArrayFileLoader;
+use UserFrosting\Support\Repository\Repository;
 
 /**
  * Class UFAdapterPlugin
@@ -55,14 +57,11 @@ class UFAdapterPlugin extends Plugin
         $this->sprinklesPath = \UserFrosting\APP_DIR . '/' . \UserFrosting\SPRINKLES_DIR_NAME;
 
         // Attempt to fetch list of Sprinkles
-        $sprinklesFile = file_get_contents($this->sprinklesPath . '/sprinkles.json');
+        $sprinklesFile = file_get_contents(\UserFrosting\APP_DIR . '/sprinkles.json');
         if ($sprinklesFile === false) {
-            die(PHP_EOL . "File 'app/sprinkles/sprinkles.json' not found. Please create a 'sprinkles.json' file and try again." . PHP_EOL);
+            die(PHP_EOL . "File 'app/sprinkles.json' not found. Please create a 'sprinkles.json' file and try again." . PHP_EOL);
         }
         $this->sprinkles = json_decode($sprinklesFile)->base;
-
-        // Add core sprinkle
-        array_unshift($this->sprinkles, "core");
 
         $this->registerThemeServices();
     }
@@ -134,28 +133,40 @@ class UFAdapterPlugin extends Plugin
             // Load asset schema
             if ($config['assets.use_raw']) {
                 $baseUrl = $config['site.uri.main'] . '/' . $config['assets.raw.path'];
-                $removePrefix = \UserFrosting\APP_DIR_NAME . \UserFrosting\DS . \UserFrosting\SPRINKLES_DIR_NAME;
-                $aub = new AssetUrlBuilder($locator, $baseUrl, $removePrefix, 'assets');
 
-                $as = new AssetBundleSchema($aub);
+                $prefixTransformer = new PrefixTransformer();
+                $prefixTransformer->define(\UserFrosting\BOWER_ASSET_DIR, 'vendor-bower');
+                $prefixTransformer->define(\UserFrosting\NPM_ASSET_DIR, 'vendor-npm');
 
-                // Load schema for all sprinkles
                 foreach ($this->sprinkles as $sprinkle) {
-                    $resource = $locator->findResource("sprinkles://$sprinkle/" . $config['assets.raw.schema'], true, true);
+                    $prefixTransformer->define(\UserFrosting\APP_DIR_NAME . \UserFrosting\DS . \UserFrosting\SPRINKLES_DIR_NAME . \UserFrosting\DS . $sprinkle . \UserFrosting\DS . \UserFrosting\ASSET_DIR_NAME, \UserFrosting\SPRINKLES_DIR_NAME . \UserFrosting\DS . $sprinkle);
+                }
+                $assets = new Assets($locator, 'assets', $baseUrl, $prefixTransformer);
 
-                    if (file_exists($resource)) {
-                        $as->loadRawSchemaFile($resource);
+                // Load raw asset bundles for each Sprinkle.
+
+                // Retrieve locations of raw asset bundle schemas that exist.
+                $bundleSchemas = array_reverse($locator->findResources('sprinkles://' . $config['assets.raw.schema']));
+
+                // Load asset bundle schemas that exist.
+                if (array_key_exists(0, $bundleSchemas)) {
+                    $bundles = new RawAssetBundles(array_shift($bundleSchemas));
+
+                    foreach ($bundleSchemas as $bundleSchema) {
+                        $bundles->extend($bundleSchema);
                     }
+
+                    // Add bundles to asset manager.
+                    $assets->addAssetBundles($bundles);
                 }
             } else {
                 $baseUrl = $config['site.uri.main'] . '/' . $config['assets.compiled.path'];
-                $aub = new CompiledAssetUrlBuilder($baseUrl);
+                $assets = new Assets($locator, 'assets', $baseUrl);
+                $assets->overrideBasePath($locator->getBase() . '/public/assets');
 
-                $as = new AssetBundleSchema($aub);
-                $as->loadCompiledSchemaFile($locator->findResource("build://" . $config['assets.compiled.schema'], true, true));
+                // Load compiled asset bundle.
+                $assets->addAssetBundles(new CompiledAssetBundles($locator("build://" . $config['assets.compiled.schema'], true, true)));
             }
-
-            $am = new AssetManager($aub, $as);
 
             return $am;
         };
@@ -170,16 +181,9 @@ class UFAdapterPlugin extends Plugin
             }
 
             // Create and inject new config item
-            $config = new Config();
-
-            // Add search paths for all config files.
-            foreach ($this->sprinkles as $sprinkle) {
-                $config->addPath($this->sprinklesPath . '/' . $sprinkle . '/config');
-            }
-
-            // Get configuration mode from environment
-            $mode = getenv("UF_MODE") ?: "";
-            $config->loadConfigurationFiles($mode);
+            $builder = new ConfigPathBuilder($c['ufLocator'], 'config://');
+            $loader = new ArrayFileLoader($builder->buildPaths(getenv("UF_MODE") ?: ""));
+            $config = new Repository($loader->load());
 
             // Construct base url from components, if not explicitly specified
             if (!isset($config['site.uri.public'])) {
