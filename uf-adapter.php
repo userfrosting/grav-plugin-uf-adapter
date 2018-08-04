@@ -168,7 +168,7 @@ class UFAdapterPlugin extends Plugin
                 $assets->overrideBasePath($locator->getBase() . '/public/assets');
 
                 // Load compiled asset bundle.
-                $assets->addAssetBundles(new CompiledAssetBundles($locator("build://" . $config['assets.compiled.schema'], true, true)));
+                $assets->addAssetBundles(new CompiledAssetBundles($locator('build://' . $config['assets.compiled.schema'], true, true)));
             }
 
             return $assets;
@@ -185,7 +185,7 @@ class UFAdapterPlugin extends Plugin
 
             // Create and inject new config item
             $builder = new ConfigPathBuilder($c['ufLocator'], 'config://');
-            $loader = new ArrayFileLoader($builder->buildPaths(getenv("UF_MODE") ?: ""));
+            $loader = new ArrayFileLoader($builder->buildPaths(getenv('UF_MODE') ?: ''));
             $config = new Repository($loader->load());
 
             // Construct base url from components, if not explicitly specified
@@ -204,7 +204,7 @@ class UFAdapterPlugin extends Plugin
             }
 
             if (isset($config['display_errors'])) {
-                ini_set("display_errors", $config['display_errors']);
+                ini_set('display_errors', $config['display_errors']);
             }
 
             // Configure error-reporting
@@ -215,6 +215,12 @@ class UFAdapterPlugin extends Plugin
             // Configure time zone
             if (isset($config['timezone'])) {
                 date_default_timezone_set($config['timezone']);
+            }
+
+            // Reset 'assets' scheme in locator if specified in config. (must be done here thanks to prevent circular dependency)
+            if (!$config['assets.use_raw']) {
+                $c['ufLocator']->resetScheme('assets');
+                $c['ufLocator']->addPath('assets', '', \UserFrosting\PUBLIC_DIR_NAME . '/' . \UserFrosting\ASSET_DIR_NAME);
             }
 
             return $config;
